@@ -1,3 +1,4 @@
 {
-    "recon.defaultFuzzer": "Echidna"
+    "recon.defaultFuzzer": "Echidna",
+    "recon.mocksFolderPath": "test/recon/mocks"
 }

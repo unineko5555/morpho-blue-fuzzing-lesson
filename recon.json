@@ -40,7 +40,7 @@
       {
         "signature": "repay(tuple,uint256,uint256,address,bytes)",
         "actor": "actor",
-        "mode": "normal"
+        "mode": "fail"
       },
       {
         "signature": "setAuthorization(address,bool)",

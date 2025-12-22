@@ -6,4 +6,11 @@ import {BeforeAfter} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
 
+    function canary_hasDoneRepay() public {
+        t(!hasRepaid, "canary_hasDoneRepay");
+    }
+
+    function canary_hasLiquidated() public {
+        t(!hasLiquidated, "canary_hasLiquidated");
+    }
 }
