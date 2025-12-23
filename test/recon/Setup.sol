@@ -19,10 +19,13 @@ import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {OracleMock} from "src/mocks/OracleMock.sol";
 import {MockIRM} from "test/recon/Mocks/MockIRM.sol";
 import {MockERC20} from "@recon/MockERC20.sol";  // For _newAsset() tokens
+import {SafeMockERC20} from "test/recon/Mocks/SafeMockERC20.sol";
 
 import {MarketParams, Market} from "src/interfaces/IMorpho.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
+    // Track our safe assets separately for internal use
+    address[] private _safeAssets;
     Morpho morpho;
 
     // Deploy MockIRM and set it in Morpho if needed
@@ -46,8 +49,9 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         _addActor(address(0x413c)); // actor 1
         _addActor(address(0xb0b));  // actor 2
 
-        _newAsset(18);
-        _newAsset(18);
+        // Use SafeMockERC20 to prevent unrestricted burn during fuzzing
+        _newSafeAsset(18);
+        _newSafeAsset(18);
 
         irmMock = new MockIRM();
         oracleMock = new OracleMock();
@@ -113,5 +117,12 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     modifier asActor() {
         vm.prank(address(_getActor()));
         _;
+    }
+
+    /// @notice Creates a new SafeMockERC20 (burn requires approval) and adds to assets
+    function _newSafeAsset(uint8 decimals) internal returns (address) {
+        address asset_ = address(new SafeMockERC20("Safe Token", "SAFE", decimals));
+        _addAsset(asset_);
+        return asset_;
     }
 }

@@ -106,6 +106,59 @@ abstract contract MorphoTargets is
         hasLiquidated = true;
     }
 
+    /// @dev Liquidate after making position unhealthy via price manipulation
+    function morpho_liquidate_clamped(uint8 borrowerSeed) public {
+        address[] memory actors = _getActors();
+        address borrower = actors[borrowerSeed % actors.length];
+
+        Id id = MarketParamsLib.id(marketParams);
+        (, uint128 borrowShares, uint128 collateral) = morpho.position(id, borrower);
+
+        // Skip if no borrow position
+        if (borrowShares == 0 || collateral == 0) return;
+
+        // Drop oracle price to make position unhealthy
+        // Current price is 1e36, drop to 50% to ensure liquidatable
+        uint256 currentPrice = oracleMock.price();
+        oracleMock.setPrice(currentPrice / 2);
+
+        // Now liquidate with 1 unit of seized collateral
+        vm.prank(_getActor());
+        try morpho.liquidate(marketParams, borrower, 1, 0, hex"") {
+            hasLiquidated = true;
+        } catch {}
+
+        // Restore price
+        oracleMock.setPrice(currentPrice);
+    }
+
+    /// @dev Borrow at 79% of collateral (just under 80% LLTV)
+    function morpho_borrow_aggressive(uint256 assets) public asActor {
+        address actor = _getActor();
+        Id id = MarketParamsLib.id(marketParams);
+        (,, uint128 collateral) = morpho.position(id, actor);
+        if (collateral == 0) return;
+
+        // Check current borrow
+        (, uint128 currentBorrowShares,) = morpho.position(id, actor);
+        (,, uint128 totalBorrowAssets, uint128 totalBorrowShares,,) = morpho.market(id);
+
+        // Calculate current borrowed amount
+        uint256 currentBorrowed = 0;
+        if (totalBorrowShares > 0) {
+            currentBorrowed = uint256(currentBorrowShares) * totalBorrowAssets / totalBorrowShares;
+        }
+
+        // Max borrow at 79% LLTV
+        uint256 maxBorrow = (uint256(collateral) * 79) / 100;
+        if (maxBorrow <= currentBorrowed) return;
+
+        uint256 availableToBorrow = maxBorrow - currentBorrowed;
+        uint256 clampedAssets = (assets % availableToBorrow) + 1;
+
+        morpho.borrow(marketParams, clampedAssets, 0, actor, actor);
+    }
+
     /// ============ SIMPLE TARGET FUNCTIONS (no exactlyOneZero issue) ============ ///
 
     function morpho_accrueInterest() public asActor {

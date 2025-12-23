@@ -5,6 +5,7 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {MarketParamsLib} from "src/libraries/MarketParamsLib.sol";
 import {Id} from "src/interfaces/IMorpho.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
 
@@ -42,5 +43,78 @@ abstract contract Properties is BeforeAfter, Asserts {
         Id id = MarketParamsLib.id(marketParams);
         (uint128 totalSupply,, uint128 totalBorrow,,,) = morpho.market(id);
         return totalSupply >= totalBorrow;
+    }
+
+    // ============ NEW CRITICAL INVARIANTS ============ //
+
+    /// @dev Invariant 2: Sum of all supplyShares == totalSupplyShares
+    /// Note: Must include feeRecipient's shares when fees are enabled
+    /// If fee is set but feeRecipient is address(0), shares go to address(0)
+    function invariant_supplySharesConsistency() public view returns (bool) {
+        Id id = MarketParamsLib.id(marketParams);
+        (, uint128 totalSupplyShares,,,, uint128 fee) = morpho.market(id);
+
+        uint256 sumShares = 0;
+        address[] memory actors = _getActors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            (uint256 supplyShares,,) = morpho.position(id, actors[i]);
+            sumShares += supplyShares;
+        }
+
+        // Include feeRecipient's shares (fee accrual creates shares for feeRecipient)
+        // When fee > 0 and feeRecipient == address(0), shares go to address(0)
+        address feeRecipient = morpho.feeRecipient();
+        if (fee > 0) {
+            (uint256 feeRecipientShares,,) = morpho.position(id, feeRecipient);
+            sumShares += feeRecipientShares;
+        }
+
+        return sumShares == totalSupplyShares;
+    }
+
+    /// @dev Invariant 3: Sum of all borrowShares == totalBorrowShares
+    function invariant_borrowSharesConsistency() public view returns (bool) {
+        Id id = MarketParamsLib.id(marketParams);
+        (,,, uint128 totalBorrowShares,,) = morpho.market(id);
+
+        uint256 sumShares = 0;
+        address[] memory actors = _getActors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            (, uint128 borrowShares,) = morpho.position(id, actors[i]);
+            sumShares += borrowShares;
+        }
+
+        return sumShares == totalBorrowShares;
+    }
+
+    /// @dev Invariant 4: Morpho holds enough collateral for all positions
+    function invariant_collateralBalanceConsistency() public view returns (bool) {
+        Id id = MarketParamsLib.id(marketParams);
+
+        uint256 sumCollateral = 0;
+        address[] memory actors = _getActors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            (,, uint128 collateral) = morpho.position(id, actors[i]);
+            sumCollateral += collateral;
+        }
+
+        uint256 morphoBalance = MockERC20(marketParams.collateralToken).balanceOf(address(morpho));
+        return morphoBalance >= sumCollateral;
+    }
+
+    /// @dev Invariant 5: Morpho holds enough loanToken for withdrawals
+    /// loanToken.balanceOf(morpho) >= totalSupplyAssets - totalBorrowAssets
+    function invariant_loanTokenSolvency() public view returns (bool) {
+        Id id = MarketParamsLib.id(marketParams);
+        (uint128 totalSupply,, uint128 totalBorrow,,,) = morpho.market(id);
+
+        uint256 morphoBalance = MockERC20(marketParams.loanToken).balanceOf(address(morpho));
+
+        // Morpho should hold at least (totalSupply - totalBorrow) in loanToken
+        // This represents the available liquidity
+        if (totalSupply >= totalBorrow) {
+            return morphoBalance >= (totalSupply - totalBorrow);
+        }
+        return false; // This should never happen (covered by invariant_supplyGteBorrow)
     }
 }
