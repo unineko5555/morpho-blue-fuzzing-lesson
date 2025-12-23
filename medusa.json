@@ -1,15 +1,13 @@
 {
   "fuzzing": {
-    "workers": 16,
+    "workers": 10,
     "workerResetLimit": 50,
     "timeout": 0,
     "testLimit": 0,
     "callSequenceLength": 100,
     "corpusDirectory": "medusa",
     "coverageEnabled": true,
-    "deploymentOrder": [
-
-    ],
+    "deploymentOrder": [],
     "targetContracts": [
       "CryticTester"
     ],
@@ -19,9 +17,8 @@
     "constructorArgs": {},
     "deployerAddress": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
     "senderAddresses": [
-      "0x10000",
-      "0x20000",
-      "0x30000"
+      "0x000000000000000000000000000000000000413c",
+      "0x0000000000000000000000000000000000000b0b"
     ],
     "blockNumberDelayMax": 60480,
     "blockTimestampDelayMax": 604800,
@@ -29,10 +26,10 @@
     "transactionGasLimit": 12500000,
     "testing": {
       "stopOnFailedTest": false,
-      "stopOnFailedContractMatching": false,
+      "stopOnFailedContractMatching": true,
       "stopOnNoTests": true,
-      "testAllContracts": false,
-      "traceAll": false,
+      "testAllContracts": true,
+      "traceAll": true,
       "assertionTesting": {
         "enabled": true,
         "testViewMethods": true,
@@ -52,7 +49,7 @@
       "propertyTesting": {
         "enabled": true,
         "testPrefixes": [
-          "echidna_"
+          "invariant_"
         ]
       },
       "optimizationTesting": {
@@ -69,30 +66,32 @@
         "enableFFI": false
       },
       "skipAccountChecks": true,
-			"forkConfig": {
-				"forkModeEnabled": false,
-				"rpcUrl": "",
-				"rpcBlock": 1,
-				"poolSize": 20
-			}
+      "forkConfig": {
+        "forkModeEnabled": false,
+        "rpcUrl": "",
+        "rpcBlock": 1,
+        "poolSize": 20
+      }
     }
   },
   "compilation": {
     "platform": "crytic-compile",
     "platformConfig": {
       "target": ".",
-      "solcVersion": "0.8.19",
+      "solcVersion": "",
       "exportDirectory": "",
       "args": [
-        "--foundry-compile-all"
+        "--foundry-compile-all",
+        "--compile-force-framework",
+        "foundry"
       ]
     }
   },
   "slither": {
-		"useSlither": true,
-		"cachePath": "slither_results.json",
-		"args": []
-	},
+    "useSlither": true,
+    "cachePath": "slither_results.json",
+    "args": []
+  },
   "logging": {
     "level": "info",
     "logDirectory": ""

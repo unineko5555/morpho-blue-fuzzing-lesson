@@ -1,11 +1,14 @@
-testMode: "assertion"
-prefix: "echidna_"
+testMode: "property"
+prefix: "invariant_"
 coverage: true
+allContracts: true
 corpusDir: "echidna"
-balanceAddr: 0x1043561a8829300000
-balanceContract: 0x1043561a8829300000
+balanceAddr: 0x27b46536c66c8e3000000
+balanceContract: 0x27b46536c66c8e3000000
 filterFunctions: []
-cryticArgs: ["--foundry-compile-all"]
-deployer: "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38"
-contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+cryticArgs: ["--foundry-compile-all", "--compile-force-framework", "foundry"]
+deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+sender: ["0x000000000000000000000000000000000000413c", "0x0000000000000000000000000000000000000b0b"]
 shrinkLimit: 100000
+testLimit: 50000
+seqLen: 100
