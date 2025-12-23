@@ -5,7 +5,7 @@ sizes = true
 via_ir = false
 optimizer = true
 optimizer_runs = 999999
-bytecode_hash = "none"
+bytecode_hash = "ipfs"
 evm_version = "paris"
 
 [profile.default.invariant]
