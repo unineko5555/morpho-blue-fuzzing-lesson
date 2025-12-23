@@ -13,4 +13,8 @@ abstract contract Properties is BeforeAfter, Asserts {
     function canary_hasLiquidated() public {
         t(!hasLiquidated, "canary_hasLiquidated");
     }
+
+    function canary_morphoHasCode() public {
+        t(address(morpho).code.length > 0, "morpho_has_no_code");
+    }
 }

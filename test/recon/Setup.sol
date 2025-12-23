@@ -18,6 +18,7 @@ import "src/Morpho.sol";
 import {ERC20Mock} from "src/mocks/ERC20Mock.sol";
 import {OracleMock} from "src/mocks/OracleMock.sol";
 import {MockIRM} from "test/recon/Mocks/MockIRM.sol";
+import {MockERC20} from "@recon/MockERC20.sol";  // For _newAsset() tokens
 
 import {MarketParams, Market} from "src/interfaces/IMorpho.sol";
 
@@ -39,26 +40,32 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
-        morpho = new Morpho(address(this)); // TODO: Add parameters here
-        //address(this)
-        _addActor(address(0x413c));
-        _addActor(address(0xb0b));
+        morpho = new Morpho(address(this));
+
+        // Add actors (address(this) is automatically added by ActorManager constructor)
+        _addActor(address(0x413c)); // actor 1
+        _addActor(address(0xb0b));  // actor 2
 
         _newAsset(18);
         _newAsset(18);
 
         irmMock = new MockIRM();
         oracleMock = new OracleMock();
-        asset = new ERC20Mock();
-        liabirity = new ERC20Mock();
+        // asset = new ERC20Mock();
+        // liabirity = new ERC20Mock();
+        oracleMock.setPrice(1e36);
+
+        // Mints to all actors and approves allowances to Morpho
+        _setupAssetsAndApprovals();
 
         // Resister a market
         morpho.enableIrm(address(irmMock));
         morpho.enableLltv(8e17); // 80%
 
+        address[] memory assets = _getAssets();
         marketParams = MarketParams({
-            loanToken: address(liabirity),
-            collateralToken: address(asset),
+            loanToken: assets[1],
+            collateralToken: assets[0],
             oracle: address(oracleMock),
             irm: address(irmMock),
             lltv: 8e17 // 80%
@@ -66,12 +73,33 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         morpho.createMarket(marketParams);
 
-        asset.setBalance(address(this), type(uint88).max);
-        liabirity.setBalance(address(this), type(uint88).max);
+        // asset.setBalance(address(this), type(uint88).max);
+        // liabirity.setBalance(address(this), type(uint88).max);
 
-        asset.approve(address(morpho), type(uint256).max);
-        liabirity.approve(address(morpho), type(uint256).max);
+        // asset.approve(address(morpho), type(uint256).max);
+        // liabirity.approve(address(morpho), type(uint256).max);
 
+    }
+
+    function _setupAssetsAndApprovals() internal {
+        address[] memory actors = _getActors();
+        uint256 amount = type(uint88).max;
+
+        // Process each asset separately to reduce stack depth
+        for (uint256 assetIndex = 0; assetIndex < _getAssets().length; assetIndex++) {
+            address token = _getAssets()[assetIndex];  // renamed to avoid shadowing
+
+            // Mint to actors (MockERC20 from _newAsset uses mint, not setBalance)
+            for (uint256 i = 0; i < actors.length; i++) {
+                MockERC20(token).mint(actors[i], amount);
+            }
+
+            // Approve to morpho (approve needs prank for msg.sender)
+            for (uint256 i = 0; i < actors.length; i++) {
+                vm.prank(actors[i]);
+                MockERC20(token).approve(address(morpho), type(uint256).max);
+            }
+        }
     }
 
     /// === MODIFIERS === ///

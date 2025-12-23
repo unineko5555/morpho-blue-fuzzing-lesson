@@ -8,7 +8,8 @@ import {vm} from "@chimera/Hevm.sol";
 import {Panic} from "@recon/Panic.sol";
 
 // Morpho imports
-import {MarketParams} from "src/interfaces/IMorpho.sol";
+import {Id, MarketParams, Market} from "src/interfaces/IMorpho.sol";
+import {MarketParamsLib} from "src/libraries/MarketParamsLib.sol";
 
 // Targets
 // NOTE: Always import and apply them in alphabetical order, so much easier to debug!
@@ -24,21 +25,24 @@ abstract contract TargetFunctions is
     MorphoTargets
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
-    function create_new_market(uint8 index) public {
-        // Active token collateral
-        // Other token is debt
 
-        address loanToken = _getAssets()[index] % (_getAssets().length + 1);
-        address collateralToken = _getAssets();
+    function oracle_setPrice(uint256 price) public {
+        oracleMock.setPrice(price);
+    }
+
+    function morpho_createMarket_clamped(uint8 index, uint256 lltv) public {
+        address loanToken = _getAssets()[index % _getAssets().length];
+        address collateralToken = _getAsset();
 
         marketParams = MarketParams({
-            loanToken: address(liabirity),
-            collateralToken: address(asset),
+            loanToken: loanToken,
+            collateralToken: collateralToken,
             oracle: address(oracleMock),
             irm: address(irmMock),
-            lltv: 8e17 // 80%
+            lltv: lltv
         });
 
+        morpho_createMarket(marketParams);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
